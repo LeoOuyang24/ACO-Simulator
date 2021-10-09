@@ -1,9 +1,22 @@
 #include "ants.h"
 #include "simulation.h"
 
-Ant::Ant(NodePtr& ptr) : curNode(ptr)
+Ant::Ant(const NodePtr& ptr) : startingNode(ptr) //we don't want to visit our starting node as visited because we have to go back to it at some point
+{
+    setNode(ptr);
+}
+
+void Ant::setNode(const NodePtr& ptr)
 {
 
+    auto arc = Sim::connections.find({ptr,curNode});
+    if ( arc != Sim::connections.end())
+        {
+            pathLength += arc->second.length;
+        }
+    path.push_back({ptr,nullptr});
+    curNode = ptr;
+    //path.push_back(ptr);
 }
 
 void Ant::render()
@@ -13,6 +26,21 @@ void Ant::render()
         PolyRender::requestNGon(20,node->center,10,{0,0,0,1},0,true,1,true);
     }
 }
+
+void Ant::renderPath()
+{
+    if (Node* node = curNode.lock().get())
+    {
+        LinkedNode* cur = path.start;
+    //        std::cout << path.path.size() << "\n";
+        while (cur != path.end && cur != nullptr)
+        {
+            PolyRender::requestLine(glm::vec4(cur->current.lock().get()->center,cur->next->current.lock().get()->center),{0,0,1,.1});
+            cur = cur->next;
+        }
+    }
+}
+
 void Ant::step()
 {
     if (Node* node = curNode.lock().get())
@@ -24,11 +52,14 @@ void Ant::step()
         {
             if (node->neighbors[i].lock().get())
             {
-                if (visited.count(node->neighbors[i]) == 0 && node->neighbors[i].lock().get() != node )
+                if (!path.contains(node->neighbors[i]) )
                 {
+                    //if we have yet to visit this node
+                    //add it to the potential list and take not of the chance to visit it
                     NodePair pear = std::make_pair(curNode,node->neighbors[i]);
                     totalProb += Sim::connections[pear].chance;
                     valid.push_back({node->neighbors[i],Sim::connections[pear].chance});
+                   // std::cout << Sim::connections << "\n";
                 }
             }
         }
@@ -39,13 +70,20 @@ void Ant::step()
         {
             if (valid[i].second/totalProb + sum > gen) //calculate the chance for each node and see if our randomly generated number is within range
             {
-                lastArc = {curNode,valid[i].first};
-                pathLength += Sim::connections[{curNode,valid[i].first}].length;
-                curNode = valid[i].first;
-                path.push(curNode);
+                //lastArc = {curNode,valid[i].first};
+               // pathLength += Sim::connections[{curNode,valid[i].first}].length;
+                setNode(valid[i].first);
+               // path.push(curNode);
                 break;
             }
-            sum += valid[i].second;
+            sum += valid[i].second/totalProb;
+        }
+        if (size == 0)
+        {
+            if (path.path.size() != Sim::nodes.size())
+            {
+                std::cout <<"Ant is stuck!\n";
+            }
         }
 
     }
@@ -53,7 +91,7 @@ void Ant::step()
 
 void Ant::solve()
 {
-    while (path.size() != Sim::nodes.size())
+    while (path.path.size() != Sim::nodes.size())
     {
         step();
     }
@@ -61,14 +99,29 @@ void Ant::solve()
 
 void Ant::spray()
 {
-    if (path.size() > 1)
+    if (path.path.size() > 1)
     {
-        NodePtr cur= path.top();
-        path.pop();
-        while (path.size() > 0)
+
+        //NodePtr cur= path[path.size() - 1];
+        LinkedNode* cur = path.start;
+        while (cur->next != nullptr)
         {
-            Sim::connections[{cur,path.top()}].pheromone += 1/(pathLength);
-            path.pop();
+            Sim::connections[{cur->current,cur->next->current}].pheromone += 1.0f/(pathLength);
+            cur= cur->next;
         }
     }
+}
+
+void Ant::reset()
+{
+    //lastArc.first.reset();
+    //lastArc.second.reset();
+    pathLength = 0;
+    path.clear();
+    setNode(startingNode);
+}
+
+bool Ant::done()
+{
+    return path.path.size() >= Sim::nodes.size();
 }

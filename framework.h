@@ -20,7 +20,7 @@ struct std::equal_to<NodePtr>
     bool operator()(const NodePtr& a, const NodePtr& b) const;
 };
 
-bool operator==(const NodePtr& a, const NodePtr& b);
+//bool operator==(const NodePtr& a, const NodePtr& b);
 
 typedef std::pair<NodePtr,NodePtr> NodePair;
 
@@ -30,11 +30,18 @@ struct std::hash<NodePair>
     size_t operator()(const NodePair& pear) const;
 };
 
+template <>
+struct std::equal_to<NodePair>
+{
+    bool operator()(const NodePair& a, const NodePair& b) const;
+};
+
 struct Connection
 {
     NodePtr node1, node2;
     float length = 1;
     float pheromone = 0;
+    float basePheromone = 0;
     float chance = 0; //chance of taking this connection
     Node* getNode1();
     Node* getNode2();
@@ -43,7 +50,7 @@ struct Connection
 
 struct Node
 {
-  static constexpr float radius = 10;
+  static constexpr float radius = 20;
   glm::vec2 center;
   std::vector<NodePtr> neighbors;
   Node(const glm::vec2& pos) : center(pos)

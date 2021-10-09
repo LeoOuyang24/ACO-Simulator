@@ -11,10 +11,10 @@ bool std::equal_to<NodePtr>::operator ()(const NodePtr& a, const NodePtr& b) con
     return a.lock().get() == b.lock().get();
 }
 
-bool operator==(const NodePtr& a,const NodePtr& b)
+/*bool operator==(const NodePtr& a,const NodePtr& b)
 {
     return std::equal_to<NodePtr>()(a,b);
-}
+}*/
 
 size_t std::hash<NodePair>::operator ()(const NodePair& pear) const
 {
@@ -22,6 +22,13 @@ size_t std::hash<NodePair>::operator ()(const NodePair& pear) const
     return hash1 ^ std::hash<NodePtr>()(pear.second);
     //not too worried about xor being a poor hash combiner because we want it to be symmetric and
     //we should never have a case where both nodePtrs are the same since nodes can't have an edge to themselves
+
+}
+
+bool std::equal_to<NodePair>::operator()(const NodePair& a, const NodePair& b) const
+{
+    return (a.first.lock().get() == b.first.lock().get() && a.second.lock().get() == b.second.lock().get())
+        || (a.first.lock().get() == b.second.lock().get() && a.second.lock().get() == b.first.lock().get());
 
 }
 
@@ -37,5 +44,5 @@ void Connection::updateChance()
 {
     //http://www.scholarpedia.org/article/Ant_colony_optimization#ConstructAntSolutions
     //the heuristic in our case is 1/length, so it's inversely proportional to how long the distance is
-    chance = pow(pheromone,Sim::alpha)*pow(1/length,Sim::beta);
+    chance = pow(basePheromone + pheromone,Sim::alpha)*pow(1/length,Sim::beta);
 }

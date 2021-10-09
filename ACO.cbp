@@ -57,85 +57,13 @@
 			<Add directory="../../freetype-2.9.1/objs" />
 			<Add directory="../../resources" />
 		</Linker>
-		<Unit filename="../../resources/FreeTypeHelper.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/FreeTypeHelper.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/SDLhelper.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/SDLhelper.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/components.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/components.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/geometry.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/geometry.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/glGame.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/glGame.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/glInterface.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/glInterface.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/render.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/render.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/fragment/fragmentShader.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/fragment/outlineShader.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/fragment/paintShader.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/fragment/simpleFragment.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/fragment/wordFragment.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/vertex/polygonVertex.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/vertex/simpleVertex.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/vertex/vertexShader.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/shaders/vertex/wordVertex.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/stb_image.h">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/vanilla.cpp">
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="../../resources/vanilla.h">
-			<Option target="Release" />
-		</Unit>
+		<Unit filename="ants.cpp" />
+		<Unit filename="ants.h" />
+		<Unit filename="framework.cpp" />
+		<Unit filename="framework.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="simulation.cpp" />
+		<Unit filename="simulation.h" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>
