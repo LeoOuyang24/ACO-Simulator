@@ -41,12 +41,10 @@ struct Connection
     NodePtr node1, node2;
     float length = 1;
     float pheromone = 0;
-    float basePheromone = 0;
     float chance = 0; //chance of taking this connection
     Node* getNode1();
     Node* getNode2();
     void updateChance();
-    float getTotalPheromone();
 };
 
 struct Node

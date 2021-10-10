@@ -76,10 +76,10 @@ struct Sim
         PHEROMONES, //update pheromones
         RESET //reset all ant states and positions
     };
-
     static glm::vec4 rect; //the window rect where the user can interact with the simulation.
     static DeltaTime pause;
     static bool paused;
+    static float iterations;
     static float alpha; //variables that allow us to adjust our heuristic
     static float beta;
     static float evaporation; //pheromone evaporation from 0 to 1
@@ -98,6 +98,7 @@ struct Sim
     static NodePtr getNode(const glm::vec2& pos); //gets the node at that position. Returns an empty ptr otherwise
     static Connection& addConnection(const NodePtr& ptr1, const NodePtr& ptr2); //adds a connection between the given nodes and returns a reference. USeful for setup()
 
+    static float greedy(); //solve TSP with greedy algorithm
     static void setup();
     static void render();
     static void step();

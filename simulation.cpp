@@ -7,6 +7,7 @@
 glm::vec4 Sim::rect;
 DeltaTime Sim::pause;
 bool Sim::paused = true;
+float Sim::iterations = 0;
 float Sim::alpha = 1;
 float Sim::beta = 2;
 float Sim::evaporation = .5;
@@ -103,7 +104,7 @@ void UIWindow::update(float mouseX, float mouseY, float z,const glm::vec4& state
 
     requestWrite(Font::tnr,{Sim::paused ? "PAUSED" : "RUNNING",{rect.x + rect.z/2,rect.y + rect.a*.1,-1,1}},z);
     requestWrite(Font::tnr,{message,{rect.x + rect.z/2,rect.y + rect.a*.25,-1,.5}},z);
-
+    requestWrite(Font::tnr,{"Iterations: " + convert(Sim::iterations),{rect.x+rect.z*.1,rect.y + rect.a*.5,-1,1}},z);
     if (!Sim::paused && Sim::input.optWindow->solved)
     {
         Font::tnr.requestWrite({"Fastest Solution: " + convert(Sim::input.optWindow->solutionLength),
@@ -216,10 +217,10 @@ void OptWindow::update(float x, float y,float z, const glm::vec4& scale)
             if (j != i && visited.find(Sim::nodes[j].get()) == visited.end())
             {
                 Connection* con = &Sim::connections[{Sim::nodes[i],Sim::nodes[j]}];
-                if (con->getTotalPheromone() >= max)
+                if (con->pheromone >= max)
                     {
                         index = j;
-                        max = con->getTotalPheromone();
+                        max = con->pheromone;
                     }
             }
         }
@@ -264,8 +265,42 @@ Connection& Sim::addConnection(const NodePtr& ptr1, const NodePtr& ptr2)
     throw std::logic_error("Sim::addConnection: One or more nodes were null!");
 }
 
+float Sim::greedy()
+{
+    float answer = 0;
+    if (Sim::nodes.size() > 0)
+    {
+        std::unordered_set<Node*> visited;
+        int i = 0;
+        int size = Sim::nodes.size();
+        float minDist = 0;
+        int index = 0;
+        while (visited.size() < size) //given node i ...
+        {
+            visited.insert(Sim::nodes[i].get());
+            for (int j = 0; j < size; ++j) //find the closest node that hasn't been visited yet
+            {
+                if (visited.find(Sim::nodes[j].get()) == visited.end())
+                {
+                    float dist = pointDistance(Sim::nodes[j]->center,Sim::nodes[i]->center);
+                    if ( dist < minDist || minDist == 0)
+                    {
+                        minDist = dist;
+                        index =j;
+                    }
+                }
+            }
+            answer += minDist;
+            i = index;
+            minDist = 0;
+        }
+    }
+    return answer;
+}
+
 void Sim::setup()
 {
+    float length = greedy();
     ants.clear();
     int size = Sim::nodes.size();
     for (int i = 0; i < size;++i)
@@ -275,7 +310,7 @@ void Sim::setup()
             if (nodes[i].get() != nodes[j].get())
             {
                 Connection* ptr = &addConnection(nodes[i],nodes[j]);
-                ptr->basePheromone = 1;
+                ptr->pheromone = size/length; //technically, the starting pheromone should be the number of ants/greedy length but for Ant System, that number is the same as the number of nodes
                 ptr->updateChance();
             }
         }
@@ -387,6 +422,7 @@ void Sim::step()
         }
     case RESET:
         {
+            iterations ++;
             reset();
             currentAnt = ants.begin();
             state = ANTS;
