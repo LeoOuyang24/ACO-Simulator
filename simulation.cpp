@@ -24,6 +24,28 @@ void SimWindow::update(float x, float y, float z, const glm::vec4& scale)
 {
     switch (KeyManager::getJustPressed())
     {
+    case SDLK_r:
+        {
+            Sim::fullReset();
+            int nodes = rand()%(10 - 4) + 4;
+            for (int i = 0; i < nodes; ++i)
+            {
+                float x = fmod(rand(),(rect.z - rect.z*.1)) + rect.z*.05 + rect.x;
+                float y = fmod(rand(),(rect.a - rect.a*.1)) + rect.a*.05 + rect.y;
+                int size = Sim::nodes.size();
+                for (int j = 0; j < size;++j)
+                {
+                    while (pointDistance(Sim::nodes[j]->center,{x,y}) < 2.2*Node::radius) //this weird code checks to make sure we are always at least 10 distance away from each node
+                        {
+                            x = fmod(rand(),(rect.z - rect.z*.1)) + rect.z*.05 + rect.x;
+                            y = fmod(rand(),(rect.a - rect.a*.1)) + rect.a*.05 + rect.y;
+                            j = 0;
+                        }
+                }
+                Sim::addNode(*(new Node({x,y})));
+            }
+            break;
+        }
     case SDLK_n:
         input = input == NODES ? NONE : NODES;
         break;
@@ -107,12 +129,17 @@ void UIWindow::update(float mouseX, float mouseY, float z,const glm::vec4& state
     requestWrite(Font::tnr,{"Iterations: " + convert(Sim::iterations),{rect.x+rect.z*.1,rect.y + rect.a*.5,-1,1}},z);
     if (!Sim::paused && Sim::input.optWindow->solved)
     {
+        float xOffset = rect.x + rect.z*.9;
         Font::tnr.requestWrite({"Fastest Solution: " + convert(Sim::input.optWindow->solutionLength),
-                                {rect.x + rect.z*.9, rect.y + rect.a*.6, -1, .5},0,{0,0,0,1},z,RIGHT});
+                                {xOffset, rect.y + rect.a*.3, -1, .5},0,{0,0,0,1},z,RIGHT});
        Font::tnr.requestWrite({"Fastest ACO Solution: " + convert(Sim::input.optWindow->ACOLength),
-                                {rect.x + rect.z*.9, rect.y + rect.a*.7, -1, .5},0,{0,0,0,1},z,RIGHT});
+                                {xOffset, rect.y + rect.a*.4, -1, .5},0,{0,0,0,1},z,RIGHT});
         Font::tnr.requestWrite({"ACO % longer than solution: " + convert((Sim::input.optWindow->ACOLength/Sim::input.optWindow->solutionLength - 1)*10000/10000),
-                                {rect.x + rect.z*.9, rect.y + rect.a*.8, -1, .5},0,{0,0,0,1},z,RIGHT});
+                                {xOffset, rect.y + rect.a*.5, -1, .5},0,{0,0,0,1},z,RIGHT});
+        Font::tnr.requestWrite({"Last Solution: " + convert(Sim::input.optWindow->lastLength),
+                                {xOffset, rect.y + rect.a*.6, -1, .5}, 0, {0,0,0,1},z,RIGHT});
+        Font::tnr.requestWrite({"Last Solution % longer than solution: " + convert((Sim::input.optWindow->lastLength/Sim::input.optWindow->solutionLength - 1)*10000/10000),
+                               {xOffset, rect.y + rect.a*.7, -1, .5}, 0, {0,0,0,1},z,RIGHT});
     }
 
     Window::update(mouseX,mouseY,z,state);
@@ -185,49 +212,66 @@ void OptWindow::update(float x, float y,float z, const glm::vec4& scale)
 
     glm::vec2 offset ={rect.x,0}; //offset to render everything
 
-    if (solution.size() != Sim::nodes.size())
-    {
-        solved = false;
-    }
     if (!Sim::paused && !solved)
     {
         solve();
     }
-    else if (solved)
+    else if (solved) //render best solution
     {
         int solutionSize = solution.size() - 1;
         for (int i = 0; i < solutionSize; ++i)
         {
-            PolyRender::requestLine(glm::vec4(Sim::nodes[i]->center + offset, Sim::nodes[i + 1]->center + offset),{0,1,0,.6},.1,20);
+            PolyRender::requestLine(glm::vec4(solution[i]->center + offset, solution[i + 1]->center + offset),{0,1,0,.6},.1,solThick);
         }
     }
     int size = Sim::nodes.size();
-    int count = 0;
     int i = 0;
-    std::unordered_set<Node*> visited;
-    ACOLength = 0;
-    while (count < size)
+    LinkedSet visited;
+    lastLength = 0;
+    while (visited.path.size() < size) //find last solution
     {
         Sim::nodes[i]->render(offset);
-        visited.insert(Sim::nodes[i].get());
-        float max = 0;
-        int index = i;
-        for (int j = 0; j < size; ++j) //find the next node in our best path
+        visited.push_back({Sim::nodes[i],nullptr});
+        if (visited.path.size() < size) //slight optimization for when we've reached the end of the path
         {
-            if (j != i && visited.find(Sim::nodes[j].get()) == visited.end())
+            float max = 0;
+            int index = i;
+            for (int j = 0; j < size; ++j) //find the next node in our best path
             {
-                Connection* con = &Sim::connections[{Sim::nodes[i],Sim::nodes[j]}];
-                if (con->pheromone >= max)
-                    {
-                        index = j;
-                        max = con->pheromone;
-                    }
+                if (!visited.contains(Sim::nodes[j]))
+                {
+                    Connection* con = &Sim::connections[{Sim::nodes[i],Sim::nodes[j]}];
+                    if (con->pheromone >= max)
+                        {
+                            index = j;
+                            max = con->pheromone;
+                        }
+                }
             }
+            PolyRender::requestLine(glm::vec4(Sim::nodes[i]->center + offset,Sim::nodes[index]->center + offset),{0,0,1,1},.75,lastThick);
+            lastLength += pointDistance(Sim::nodes[i]->center,Sim::nodes[index]->center);
+            i = index;
         }
-        PolyRender::requestLine(glm::vec4(Sim::nodes[i]->center + offset,Sim::nodes[index]->center + offset),{0,0,1,1},.75,7);
-        ACOLength += pointDistance(Sim::nodes[i]->center,Sim::nodes[index]->center);
-        i = index;
-        count ++;
+    }
+    if (!solved || lastLength < ACOLength || ACOLength == 0)
+    {
+        ACOLength = lastLength;
+        ACOSolution.clear();
+        LinkedNode* cur = visited.start;
+        while (cur != nullptr)
+        {
+            ACOSolution.push_back(cur->current.lock().get());
+            cur = cur->next;
+        }
+    }
+    int ACOSize = ACOSolution.size() - 1;
+    for (int i = 0; i < ACOSize; ++i)
+    {
+        PolyRender::requestLine(glm::vec4(ACOSolution[i]->center + offset, ACOSolution[i + 1]->center + offset),{1,1,0,1},.5,ACOThick);
+    }
+    if (solution.size() != Sim::nodes.size()) //doing this at the very end means that we can use solved as a way to check if the number of nodes have changed since last frame
+    {
+        solved = false;
     }
     Window::update(x,y,z,scale);
 }
@@ -464,5 +508,17 @@ void Sim::reset()
     {
         ants[i]->reset();
     }
+    state = START;
+}
+
+void Sim::fullReset()
+{
+    ants.clear();
+    connections.clear();
+    nodes.clear();
+
+    paused = true;
+    speed = 1;
+    iterations = 0;
     state = START;
 }

@@ -35,9 +35,13 @@ struct UIWindow : public Window
 
 struct OptWindow : public Window
 {
+    constexpr static int solThick = 20; //thickness to draw the best solution
+    constexpr static int ACOThick = 15; //thickness to draw the best ACO solution
+    constexpr static int lastThick = 5; //thickness to draw the last solution
     bool solved = false; //whether or not we've solved TSP
-    float solutionLength = 0, ACOLength = 0; //actual best solution length and best solution calculated by ACO respectively
+    float solutionLength = 0, ACOLength = 0, lastLength = 0; //actual best solution length, best solution calculated by ACO thus far, and length of the last solution calculated respectively
     std::vector<Node*> solution;
+    std::vector<Node*> ACOSolution;
     float solve(Node* cur, std::unordered_set<Node*>& visited, std::vector<Node*>& path, float pathLength, std::vector<Node*>& bestPath, float bestLength);
     void solve(); //TSP Brute force
     OptWindow(const glm::vec4& rect) : Window(rect,nullptr,{.75,.75,.75,1},0)
@@ -104,6 +108,7 @@ struct Sim
     static void step();
     static void update();
     static void reset();
+    static void fullReset(); //deletes all nodes and ants
 
 
 };
