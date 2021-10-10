@@ -44,5 +44,9 @@ void Connection::updateChance()
 {
     //http://www.scholarpedia.org/article/Ant_colony_optimization#ConstructAntSolutions
     //the heuristic in our case is 1/length, so it's inversely proportional to how long the distance is
-    chance = pow(basePheromone + pheromone,Sim::alpha)*pow(1/length,Sim::beta);
+    chance = pow(getTotalPheromone(),Sim::alpha)*pow(1/length,Sim::beta);
+}
+float Connection::getTotalPheromone()
+{
+    return pheromone + basePheromone;
 }

@@ -46,6 +46,7 @@ struct Connection
     Node* getNode1();
     Node* getNode2();
     void updateChance();
+    float getTotalPheromone();
 };
 
 struct Node
@@ -57,9 +58,9 @@ struct Node
   {
 
   }
-  virtual void render()
+  virtual void render(const glm::vec2& offset = {0,0})
   {
-      PolyRender::requestCircle({1,0,0,1},center,radius,true,0);
+      PolyRender::requestCircle({1,0,0,1},offset + center,radius,true,1);
   }
   /*virtual void renderConnections()
   {

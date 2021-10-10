@@ -12,8 +12,7 @@
 int main(int args, char* argsc[])
 {
     //delete ptr;
-    const int screenWidth = 640;
-    const int screenHeight = 640;
+
     srand(time(NULL));
 
     SDL_Init(SDL_INIT_VIDEO);
@@ -22,8 +21,14 @@ int main(int args, char* argsc[])
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,8);
     SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
-    SDL_Window* window = SDL_CreateWindow("Project",SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,screenWidth, screenHeight, SDL_WINDOW_OPENGL);
- //   SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS,4);
+    SDL_DisplayMode mode;
+
+    SDL_GetCurrentDisplayMode(0, &mode);
+
+    const int screenWidth = mode.w; //get screen resolution
+    const int screenHeight = mode.h;
+
+    SDL_Window* window = SDL_CreateWindow("Project",0, 0,screenWidth, screenHeight, SDL_WINDOW_OPENGL);
     SDL_StopTextInput();
     SDL_GL_CreateContext(window);
     RenderProgram::init(screenWidth,screenHeight);
@@ -37,9 +42,8 @@ int main(int args, char* argsc[])
     glClearColor(1,1,1,1);
     bool eventsEmpty = true;
 
-    auto n1 = Sim::addNode(*(new Node({100,100})));
-    auto n2 = Sim::addNode(*(new Node({200,200})));
-    Sim::addConnection(n1,n2);
+    Sim::input.init();
+
         //std::cout << tree.count() << std::endl;
     while (!quit)
     {
@@ -64,9 +68,8 @@ int main(int args, char* argsc[])
 
      //           Font::tnr.requestWrite({"ADDING NODES,PRESS ESC TO STOP",{100,100,-1,.5}});
 
-
-        SpriteManager::render();
         PolyRender::render();
+        SpriteManager::render();
        // Font::alef.write(Font::wordProgram,"asdf",320,320,0,1,{0,0,0});
         SDL_GL_SwapWindow(window);
         DeltaTime::update();

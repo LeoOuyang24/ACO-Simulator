@@ -23,7 +23,7 @@ void Ant::render()
 {
     if (Node* node = curNode.lock().get())
     {
-        PolyRender::requestNGon(20,node->center,10,{0,0,0,1},0,true,1,true);
+        PolyRender::requestNGon(20,node->center,10,{0,0,0,1},0,true,2,true);
     }
 }
 
@@ -35,7 +35,7 @@ void Ant::renderPath()
     //        std::cout << path.path.size() << "\n";
         while (cur != path.end && cur != nullptr)
         {
-            PolyRender::requestLine(glm::vec4(cur->current.lock().get()->center,cur->next->current.lock().get()->center),{0,0,1,.1});
+            PolyRender::requestLine(glm::vec4(cur->current.lock().get()->center,cur->next->current.lock().get()->center),{0,0,1,.1},.75,5);
             cur = cur->next;
         }
     }

@@ -4,6 +4,7 @@
 
 #include "simulation.h"
 
+glm::vec4 Sim::rect;
 DeltaTime Sim::pause;
 bool Sim::paused = true;
 float Sim::alpha = 1;
@@ -18,81 +19,218 @@ Sim::State Sim::state = START;
 InputManager Sim::input;
 Sim::AntStorage::iterator Sim::currentAnt;
 
-
-
-void InputManager::doInput()
+void SimWindow::update(float x, float y, float z, const glm::vec4& scale)
 {
     switch (KeyManager::getJustPressed())
     {
     case SDLK_n:
         input = input == NODES ? NONE : NODES;
         break;
-    case SDLK_c:
-        input = input == CONNECT ? NONE : CONNECT;
-        break;
-    case SDLK_a:
-        input = input == ANTS ? NONE: ANTS;
-        break;
     case SDLK_ESCAPE:
         input = NONE;
         break;
     case SDLK_SPACE:
-        Sim::paused=!Sim::paused;
+        Sim::paused = !Sim::paused;
         break;
     case SDLK_RIGHT:
         Sim::speed = std::min(2*Sim::speed,maxSpeed);
         break;
     case SDLK_LEFT:
         Sim::speed = std::max(minSpeed,Sim::speed/2);
+        break;
+    default:
+        break;
     }
     switch (input)
     {
     case NODES:
-        if (MouseManager::getJustClicked() == SDL_BUTTON_LEFT)
+        if (MouseManager::getJustClicked() == SDL_BUTTON_LEFT && pointInVec(rect,{x,y}))
         {
-            Sim::addNode(*(new Node(pairtoVec(MouseManager::getMousePos()))));
-        }
-        break;
-    case CONNECT:
-        if (MouseManager::getJustClicked() == SDL_BUTTON_LEFT)
-        {
-            auto temp = Sim::getNode(pairtoVec(MouseManager::getMousePos()));
-            if (temp.lock().get())
-            {
-                node1 = temp;
-            }
-        }
-        else if (MouseManager::getJustReleased() ==SDL_BUTTON_LEFT)
-        {
-            auto node2 = Sim::getNode(pairtoVec(MouseManager::getMousePos()));
-            if (node2.lock().get())
-            {
-                Sim::addConnection(node1,node2);
-            }
-            node1.reset();
-        }
-        else if (MouseManager::isPressed(SDL_BUTTON_LEFT) && node1.lock().get())
-        {
-            PolyRender::requestLine(glm::vec4(node1.lock().get()->center,pairtoVec(MouseManager::getMousePos())),{1,0,0,1},1);
-        }
-        break;
-    case ANTS:
-        if (MouseManager::getJustClicked() == SDL_BUTTON_LEFT)
-        {
-             Sim::ants.emplace_back((new Ant(Sim::getNode(pairtoVec(MouseManager::getMousePos())))));
+            Sim::addNode(*(new Node({x,y})));
         }
         break;
     }
+    if (Sim::paused)
+    {
+        std::string message = "";
+        switch (input)
+        {
+        case Input::NONE:
+            message = "";
+            break;
+        case Input::NODES:
+            message = "ADDING NODES,PRESS ESC TO STOP";
+            break;
+        default:
+            message = "ERROR: INPUTMANAGER INVALID INPUT STATE";
+            break;
+        }
+        Font::tnr.requestWrite({message,{rect.x + rect.z/2 ,rect.y  + rect.a*.01,-1,.65},0,{1,0,0,1},z,CENTER});
+    }
+    Window::update(x,y,z,scale);
+}
+
+void UIWindow::update(float mouseX, float mouseY, float z,const glm::vec4& state)
+{
+
+    requestWrite(Font::tnr,{"Speed: " + convert(Sim::speed) + "x", {rect.x + rect.z/4, rect.y + rect.a*.1,-1,.5}},z);
+    std::string message = "";
+    if (!Sim::paused)
+    {
+        switch (Sim::state)
+        {
+        case Sim::State::START:
+            message = "Starting...";
+            break;
+        case Sim::State::ANTS:
+            message = "Updating Ants";
+            break;
+        case Sim::State::EVAPORATE:
+            message = "Evaporating all pheromones";
+            break;
+        case Sim::State::PHEROMONES:
+            message = "Updating pheromones based on ant trails";
+            break;
+        case Sim::State::RESET:
+            message = "Resetting ants state";
+            break;
+        default:
+            message = "ERROR: Invalid Simulation state";
+            break;
+
+        }
+    }
+
+    requestWrite(Font::tnr,{Sim::paused ? "PAUSED" : "RUNNING",{rect.x + rect.z/2,rect.y + rect.a*.1,-1,1}},z);
+    requestWrite(Font::tnr,{message,{rect.x + rect.z/2,rect.y + rect.a*.25,-1,.5}},z);
+
+    if (!Sim::paused && Sim::input.optWindow->solved)
+    {
+        Font::tnr.requestWrite({"Fastest Solution: " + convert(Sim::input.optWindow->solutionLength),
+                                {rect.x + rect.z*.9, rect.y + rect.a*.6, -1, .5},0,{0,0,0,1},z,RIGHT});
+       Font::tnr.requestWrite({"Fastest ACO Solution: " + convert(Sim::input.optWindow->ACOLength),
+                                {rect.x + rect.z*.9, rect.y + rect.a*.7, -1, .5},0,{0,0,0,1},z,RIGHT});
+        Font::tnr.requestWrite({"ACO % longer than solution: " + convert((Sim::input.optWindow->ACOLength/Sim::input.optWindow->solutionLength - 1)*10000/10000),
+                                {rect.x + rect.z*.9, rect.y + rect.a*.8, -1, .5},0,{0,0,0,1},z,RIGHT});
+    }
+
+    Window::update(mouseX,mouseY,z,state);
+
+}
+
+void InputManager::doInput()
+{
+
 }
 
 void InputManager::render()
 {
-    if (Sim::paused)
-    {
-          Font::tnr.requestWrite({getMessage(),{RenderProgram::getScreenDimen().x/2,100,-1,.5}});
-    }
-    Font::tnr.requestWrite({"Speed: " + convert(Sim::speed) + "x", {RenderProgram::getScreenDimen().x/4, 0,-1,.5}});
+
+    inputWindow->updateTop(1);
+    simWindow->updateTop(0);
+    optWindow->updateTop(0);
 }
+
+float OptWindow::solve(Node* cur, std::unordered_set<Node*>& visited, std::vector<Node*>& path, float pathLength, std::vector<Node*>& bestPath, float bestLength)
+{
+    int size = Sim::nodes.size();
+    if (visited.size() < size)
+    {
+        for (int i = 0; i < size; ++i)
+        {
+            Node* node = Sim::nodes[i].get();
+            if (visited.find(node) == visited.end())
+            {
+                visited.insert(node);
+                path.push_back(node);
+                bestLength = solve(node,visited,path,pathLength + pointDistance(node->center,cur->center),bestPath, bestLength); //update bestLength
+                visited.erase(visited.find(node));
+                path.pop_back();
+            }
+        }
+    }
+    else
+    {
+        if (bestLength > pathLength || bestLength == 0) //bestLength is 0 when it's uninitialized
+        {
+            bestLength = pathLength;
+            bestPath = path;
+        }
+    }
+    return bestLength;
+}
+
+void OptWindow::solve()
+{
+    if (Sim::nodes.size() > 0)
+    {
+        std::unordered_set<Node*> visited;
+        visited.insert(Sim::nodes[0].get());
+
+        std::vector<Node*> path;
+        path.reserve(Sim::nodes.size());
+        path.push_back(Sim::nodes[0].get());
+
+        solution.reserve(Sim::nodes.size());
+
+        solutionLength = solve(Sim::nodes[0].get(),visited,path,0,solution,0);
+
+        solved = true;
+    }
+}
+
+void OptWindow::update(float x, float y,float z, const glm::vec4& scale)
+{
+
+    glm::vec2 offset ={rect.x,0}; //offset to render everything
+
+    if (solution.size() != Sim::nodes.size())
+    {
+        solved = false;
+    }
+    if (!Sim::paused && !solved)
+    {
+        solve();
+    }
+    else if (solved)
+    {
+        int solutionSize = solution.size() - 1;
+        for (int i = 0; i < solutionSize; ++i)
+        {
+            PolyRender::requestLine(glm::vec4(Sim::nodes[i]->center + offset, Sim::nodes[i + 1]->center + offset),{0,1,0,.6},.1,20);
+        }
+    }
+    int size = Sim::nodes.size();
+    int count = 0;
+    int i = 0;
+    std::unordered_set<Node*> visited;
+    ACOLength = 0;
+    while (count < size)
+    {
+        Sim::nodes[i]->render(offset);
+        visited.insert(Sim::nodes[i].get());
+        float max = 0;
+        int index = i;
+        for (int j = 0; j < size; ++j) //find the next node in our best path
+        {
+            if (j != i && visited.find(Sim::nodes[j].get()) == visited.end())
+            {
+                Connection* con = &Sim::connections[{Sim::nodes[i],Sim::nodes[j]}];
+                if (con->getTotalPheromone() >= max)
+                    {
+                        index = j;
+                        max = con->getTotalPheromone();
+                    }
+            }
+        }
+        PolyRender::requestLine(glm::vec4(Sim::nodes[i]->center + offset,Sim::nodes[index]->center + offset),{0,0,1,1},.75,7);
+        ACOLength += pointDistance(Sim::nodes[i]->center,Sim::nodes[index]->center);
+        i = index;
+        count ++;
+    }
+    Window::update(x,y,z,scale);
+}
+
 
 NodePtr Sim::addNode(Node& node)
 {
@@ -162,9 +300,10 @@ void Sim::render()
     }
 
     auto conEnd = connections.end();
+   // std::cout << connections.size () << "\n";
     for (auto it = connections.begin(); it != conEnd; )
     {
-        PolyRender::requestLine(glm::vec4(it->first.first.lock().get()->center,it->first.second.lock().get()->center),{1,0,0,it->second.pheromone*100},-1);
+        PolyRender::requestLine(glm::vec4(it->first.first.lock().get()->center,it->first.second.lock().get()->center),{1,0,0,it->second.pheromone*100},.5);
         ++it;
     }
     if (state == ANTS && currentAnt != ants.end() && currentAnt->get())
@@ -172,34 +311,9 @@ void Sim::render()
         currentAnt->get()->render();
         currentAnt->get()->renderPath();
     }
-    std::string message = "";
-    if (!paused)
-    {
-        switch (state)
-        {
-        case START:
-            message = "Starting...";
-            break;
-        case ANTS:
-            message = "Updating Ants";
-            break;
-        case EVAPORATE:
-            message = "Evaporating all pheromones";
-            break;
-        case PHEROMONES:
-            message = "Updating pheromones based on ant trails";
-            break;
-        case RESET:
-            message = "Resetting ants state";
-            break;
-        default:
-            message = "ERROR: Invalid Simulation state";
-            break;
 
-        }
-    }
-    Font::tnr.requestWrite({paused ? "PAUSED" : "RUNNING",{RenderProgram::getScreenDimen().x/2,0,-1,1}});
-    Font::tnr.requestWrite({message,{RenderProgram::getScreenDimen().x/2,50,-1,.5}});
+
+    //PolyRender::requestRect({rect.x + rect.z, rect.y, RenderProgram::getScreenDimen().x - rect.z, rect.a},{.75,.75,.75,1},true,0,0);
 
     input.render();
 }
@@ -219,11 +333,6 @@ void Sim::step()
         {
             currentAnt = ants.erase(currentAnt);
         }
-        /*for (auto it = connections.begin(); it != connections.end(); ++it)
-        {
-            std::cout << it->get() << "\n";
-        }*/
-
         if (currentAnt != ants.end())
         {
            // std::cout << currentAnt - ants.begin() << "\n";
